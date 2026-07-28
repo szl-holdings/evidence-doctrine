@@ -1,0 +1,29 @@
+{
+  "name": "@szl-holdings/evidence-doctrine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fail-closed Decision-SLSA maturity evaluator and evidence doctrine reference",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/szl-holdings/evidence-doctrine.git"
+  },
+  "homepage": "https://github.com/szl-holdings/evidence-doctrine#readme",
+  "bugs": {
+    "url": "https://github.com/szl-holdings/evidence-doctrine/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "test": "node --test src/index.test.ts && python python/test_evidence_doctrine.py",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

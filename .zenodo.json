@@ -1,0 +1,32 @@
+{
+  "title": "Decision-SLSA v1.4: Evidence Levels for Governed Decisions",
+  "description": "A fail-closed maturity model and TypeScript/Python reference implementation for grading evidence attached to governed decisions. This public draft is not a certification and does not claim conformance with the upstream SLSA specification.",
+  "creators": [
+    {
+      "name": "SZL Holdings"
+    }
+  ],
+  "license": "Apache-2.0",
+  "upload_type": "publication",
+  "publication_type": "technicalnote",
+  "version": "1.4.0",
+  "keywords": [
+    "decision provenance",
+    "evidence",
+    "governed AI",
+    "supply-chain security",
+    "attestation"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/szl-holdings/evidence-doctrine",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://slsa.dev/spec/v1.2/",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    }
+  ]
+}
