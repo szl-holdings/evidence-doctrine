@@ -14,7 +14,7 @@ been checked for the exact decision bundle.
 | MCP governor decision records | Repository implementation is designed to record request/tool inputs, policy decision, and output verdict. | D1 candidate | No exact bundle was verified here for signature, tamper evidence, third-party log, replay, offline verification, or hardware attestation. |
 | EU Article 12 decision records | Repository implementation is designed to preserve inputs, applied control, and output status. | D1 candidate | Product-wide wiring and all D2 requirements were not independently verified by this assessment. |
 | Overclaim incident ledger | Repository implementation is designed to record detection and correction lifecycle evidence. | D0 for D-SLSA | It is an incident ledger, not necessarily a single decision bundle containing identified inputs, policy, and output. |
-| Attested-inference draft | A separate draft branch contains a fail-closed attestation contract. | D1 candidate | Real quote verification on authorized hardware, allowlisted measurements, and the cumulative D2/D3 requirements remain unverified. |
+| Attested MCP governor | Platform main contains a fail-closed relying-party boundary for normalized, signed hardware-attestation results. | D1 candidate | Tests use synthetic keys and claim values. Real quote verification on authorized hardware, allowlisted measurements, and the cumulative D2/D3 requirements remain unverified. |
 | Evidence-doctrine package | This package defines and tests the grading rules. | D0 operationally | A grader is not itself a graded production decision bundle. |
 
 The estate-wide confirmed ceiling from this review is therefore **D1 for
