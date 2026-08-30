@@ -1,0 +1,123 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 SZL Holdings
+#
+# This repository had no CI. It ships two independent implementations of the
+# Decision-SLSA evaluator — TypeScript in src/ and Python in python/ — whose
+# whole value is that they agree. Without CI, nothing checked either one, and
+# nothing checked that they stayed in step.
+#
+# Note on tooling: `src/index.test.ts` is executed by `node --test` directly
+# with no build step, which requires Node's native TypeScript type-stripping,
+# hence Node >= 24 (matching package.json engines). There is no committed
+# pnpm lockfile, so install is deliberately not --frozen-lockfile; the catalog
+# in pnpm-workspace.yaml pins the two dev dependencies exactly, which is what
+# actually determines reproducibility here.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Typecheck (tsc --noEmit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 24
+      - name: Install dev dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: pnpm typecheck
+        run: pnpm run typecheck
+
+  test-typescript:
+    name: TypeScript tests (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: node --test (native TS type-stripping, no build step)
+        run: node --test src/index.test.ts
+
+  test-python:
+    name: Python tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Byte-compile
+        run: python -m compileall -q python
+      - name: unittest suite (stdlib only, no dependencies)
+        run: python python/test_evidence_doctrine.py
+
+  dual-implementation-gate:
+    name: Both implementations stay wired to `test`
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Assert the npm `test` script still runs both suites
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, sys
+
+          pkg = json.load(open("package.json"))
+          test_script = pkg.get("scripts", {}).get("test", "")
+
+          problems = []
+          if "src/index.test.ts" not in test_script:
+              problems.append("scripts.test no longer runs the TypeScript suite (src/index.test.ts)")
+          if "python/test_evidence_doctrine.py" not in test_script:
+              problems.append("scripts.test no longer runs the Python suite (python/test_evidence_doctrine.py)")
+
+          engines = pkg.get("engines", {}).get("node", "")
+          if not engines:
+              problems.append("engines.node is unset, but src/index.test.ts needs Node type-stripping")
+
+          for p in problems:
+              print(f"::error file=package.json::{p}")
+          if problems:
+              sys.exit(1)
+          print(f"OK: scripts.test runs both implementations; engines.node = {engines}")
+          PY
