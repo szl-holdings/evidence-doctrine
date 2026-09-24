@@ -93,7 +93,7 @@ test('truthy values are rejected instead of being treated as evidence', () => {
 test('bundle identity is required and validated before grading', () => {
   assert.throws(
     () => gradeDecision({ evidence: verifiedThrough('D1') } as never),
-    /identity must be an object/,
+    /decision bundle must contain exactly/,
   );
   assert.throws(
     () =>
@@ -112,6 +112,25 @@ test('bundle identity is required and validated before grading', () => {
         }),
       ),
     /timezone-qualified timestamp/,
+  );
+});
+
+test('unbound bundle and identity claims fail closed', () => {
+  const valid = bundle(verifiedThrough('D1'));
+  assert.throws(
+    () => gradeDecision({ ...valid, certification: 'D4' } as never),
+    /decision bundle must contain exactly/,
+  );
+  assert.throws(
+    () =>
+      gradeDecision({
+        ...valid,
+        identity: {
+          ...valid.identity,
+          certified: true,
+        },
+      } as never),
+    /decision bundle identity must contain exactly/,
   );
 });
 

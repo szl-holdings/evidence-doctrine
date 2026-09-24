@@ -24,6 +24,12 @@ no insignificant whitespace:
 The digest field itself is excluded from those canonical bytes. A mismatched
 digest or an impossible calendar timestamp fails before a level is awarded.
 
+The outer bundle is a closed object containing exactly `identity` and
+`evidence`. The identity object contains exactly `subject`, `bundle_sha256`,
+and `evaluated_at`. Unknown fields at either boundary fail closed because they
+are outside `bundle_sha256` and could otherwise carry contradictory unbound
+claims next to an apparently valid grade.
+
 Each requirement has one of three states:
 
 - `VERIFIED`: the evaluator checked the referenced evidence.

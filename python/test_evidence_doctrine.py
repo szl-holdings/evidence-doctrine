@@ -105,7 +105,10 @@ class EvidenceDoctrineTests(unittest.TestCase):
             grade_decision(bundle({"inputs_recorded": True}))
 
     def test_bundle_identity_is_required_and_validated(self):
-        with self.assertRaisesRegex(TypeError, "identity must be a mapping"):
+        with self.assertRaisesRegex(
+            TypeError,
+            "decision bundle must contain exactly",
+        ):
             grade_decision({"evidence": verified_through("D1")})
         with self.assertRaisesRegex(TypeError, "lowercase sha256 digest"):
             grade_decision(
@@ -121,6 +124,23 @@ class EvidenceDoctrineTests(unittest.TestCase):
                     {"evaluated_at": "2026-07-26T07:00:00"},
                 )
             )
+
+    def test_unbound_bundle_and_identity_claims_fail_closed(self):
+        top_level = bundle(verified_through("D1"))
+        top_level["certification"] = "D4"
+        with self.assertRaisesRegex(
+            TypeError,
+            "decision bundle must contain exactly",
+        ):
+            grade_decision(top_level)
+
+        identity_claim = bundle(verified_through("D1"))
+        identity_claim["identity"]["certified"] = True
+        with self.assertRaisesRegex(
+            TypeError,
+            "decision bundle identity must contain exactly",
+        ):
+            grade_decision(identity_claim)
 
     def test_bundle_digest_is_recomputed_from_canonical_evidence_bytes(self):
         d1_bundle = bundle(verified_through("D1"))

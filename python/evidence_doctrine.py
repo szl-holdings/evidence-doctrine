@@ -29,6 +29,8 @@ REQUIREMENT_NAMES = frozenset(
     for requirements in LEVEL_REQUIREMENTS.values()
     for requirement in requirements
 )
+BUNDLE_KEYS = frozenset(("identity", "evidence"))
+IDENTITY_KEYS = frozenset(("subject", "bundle_sha256", "evaluated_at"))
 TIMESTAMP_PATTERN = re.compile(
     r"^(\d{4})-(\d{2})-(\d{2})T"
     r"(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?"
@@ -84,6 +86,17 @@ def _validate_state(requirement: str, state: object) -> str:
             f"received {state!r}"
         )
     return str(state)
+
+
+def _require_exact_keys(
+    value: Mapping[str, object],
+    expected: frozenset[str],
+    label: str,
+) -> None:
+    if frozenset(value) != expected:
+        raise TypeError(
+            f"{label} must contain exactly: {', '.join(sorted(expected))}"
+        )
 
 
 def _validate_subject(subject: object) -> str:
@@ -154,11 +167,20 @@ def _validate_bundle(
 ) -> tuple[Mapping[str, object], Mapping[str, object]]:
     if not isinstance(bundle, Mapping):
         raise TypeError("decision bundle must be a mapping")
-    identity = bundle.get("identity")
-    evidence = bundle.get("evidence")
+    bundle_snapshot = dict(bundle)
+    _require_exact_keys(bundle_snapshot, BUNDLE_KEYS, "decision bundle")
+
+    identity = bundle_snapshot["identity"]
+    evidence = bundle_snapshot["evidence"]
     if not isinstance(identity, Mapping):
         raise TypeError("decision bundle identity must be a mapping")
     identity_snapshot = dict(identity)
+    _require_exact_keys(
+        identity_snapshot,
+        IDENTITY_KEYS,
+        "decision bundle identity",
+    )
+
     subject = _validate_subject(identity_snapshot.get("subject"))
     bundle_sha256 = identity_snapshot.get("bundle_sha256")
     if (

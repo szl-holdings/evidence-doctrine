@@ -42,11 +42,15 @@ The TypeScript and Python references implement the same requirement names and
 monotonic grading rule. They accept explicit `VERIFIED`, `UNVERIFIED`, and
 `ABSENT` states; truthy values and marketing labels are not accepted as proof.
 Every grading input is a bundle with a non-empty subject, a lowercase sha256
-bundle digest, and a timezone-qualified evaluation timestamp. The grader copies
-that identity into its result so a D1-or-higher label cannot become detached
-from the exact evidence bundle that was evaluated. Both references recompute
-the digest over the canonical UTF-8 JSON subject, timestamp, and evidence map;
-a stale or fabricated digest and an impossible calendar timestamp fail closed.
+bundle digest, and a timezone-qualified evaluation timestamp. The outer bundle
+must contain exactly `identity` and `evidence`; `identity` must contain exactly
+`subject`, `bundle_sha256`, and `evaluated_at`. Unknown fields fail closed
+because they are outside the canonical digest and could otherwise carry
+contradictory claims. The grader copies the validated identity into its result
+so a D1-or-higher label cannot become detached from the exact evidence bundle
+that was evaluated. Both references recompute the digest over the canonical
+UTF-8 JSON subject, timestamp, and evidence map; a stale or fabricated digest
+and an impossible calendar timestamp fail closed.
 
 ## Lambda case-study boundary
 
