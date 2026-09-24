@@ -26,6 +26,8 @@ export const LEVEL_REQUIREMENTS = {
 export type Requirement = (typeof LEVEL_REQUIREMENTS)[keyof typeof LEVEL_REQUIREMENTS][number];
 export type DecisionEvidence = Partial<Record<Requirement, EvidenceState>>;
 const REQUIREMENT_NAMES = new Set<string>(Object.values(LEVEL_REQUIREMENTS).flat());
+const BUNDLE_KEYS = ['evidence', 'identity'] as const;
+const IDENTITY_KEYS = ['bundle_sha256', 'evaluated_at', 'subject'] as const;
 
 export interface DecisionBundleIdentity {
   subject: string;
@@ -66,6 +68,40 @@ function validateEvidenceState(requirement: Requirement, state: unknown): Eviden
     );
   }
   return state as EvidenceState;
+}
+
+function snapshotClosedRecord(
+  value: object,
+  expectedKeys: readonly string[],
+  label: string,
+): Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError(`${label} must be a plain object`);
+  }
+
+  const ownKeys = Reflect.ownKeys(value);
+  if (ownKeys.some((key) => typeof key !== 'string')) {
+    throw new TypeError(`${label} must contain only string keys`);
+  }
+  const actualKeys = (ownKeys as string[]).sort();
+  const expected = [...expectedKeys].sort();
+  if (
+    actualKeys.length !== expected.length ||
+    actualKeys.some((key, index) => key !== expected[index])
+  ) {
+    throw new TypeError(`${label} must contain exactly: ${expected.join(', ')}`);
+  }
+
+  const snapshot: Record<string, unknown> = {};
+  for (const key of expectedKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) {
+      throw new TypeError(`${label}.${key} must be an enumerable data property`);
+    }
+    snapshot[key] = descriptor.value;
+  }
+  return snapshot;
 }
 
 function assertCanonicalSubject(subject: unknown): asserts subject is string {
@@ -137,28 +173,35 @@ function validateBundle(bundle: DecisionEvidenceBundle): DecisionEvidenceBundle 
   if (typeof bundle !== 'object' || bundle === null || Array.isArray(bundle)) {
     throw new TypeError('decision bundle must be an object');
   }
-  const { identity, evidence } = bundle;
+  const bundleSnapshot = snapshotClosedRecord(bundle, BUNDLE_KEYS, 'decision bundle');
+
+  const identity = bundleSnapshot.identity;
+  const evidence = bundleSnapshot.evidence;
   if (typeof identity !== 'object' || identity === null || Array.isArray(identity)) {
     throw new TypeError('decision bundle identity must be an object');
   }
-  const identitySnapshot: DecisionBundleIdentity = {
-    subject: identity.subject,
-    bundle_sha256: identity.bundle_sha256,
-    evaluated_at: identity.evaluated_at,
-  };
-  assertCanonicalSubject(identitySnapshot.subject);
-  if (
-    typeof identitySnapshot.bundle_sha256 !== 'string' ||
-    !/^[0-9a-f]{64}$/.test(identitySnapshot.bundle_sha256)
-  ) {
+  const identityRecord = snapshotClosedRecord(
+    identity,
+    IDENTITY_KEYS,
+    'decision bundle identity',
+  );
+
+  const subject = identityRecord.subject;
+  const bundleSha256 = identityRecord.bundle_sha256;
+  const evaluatedAt = identityRecord.evaluated_at;
+  assertCanonicalSubject(subject);
+  if (typeof bundleSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(bundleSha256)) {
     throw new TypeError('identity.bundle_sha256 must be a lowercase sha256 digest');
   }
-  if (
-    typeof identitySnapshot.evaluated_at !== 'string' ||
-    !isStrictTimestamp(identitySnapshot.evaluated_at)
-  ) {
+  if (typeof evaluatedAt !== 'string' || !isStrictTimestamp(evaluatedAt)) {
     throw new TypeError('identity.evaluated_at must be a timezone-qualified timestamp');
   }
+  const identitySnapshot: DecisionBundleIdentity = {
+    subject,
+    bundle_sha256: bundleSha256,
+    evaluated_at: evaluatedAt,
+  };
+
   if (typeof evidence !== 'object' || evidence === null || Array.isArray(evidence)) {
     throw new TypeError('decision bundle evidence must be an object');
   }
