@@ -134,6 +134,41 @@ test('unbound bundle and identity claims fail closed', () => {
   );
 });
 
+test('hidden, symbol-keyed, accessor, and inherited claims fail closed', () => {
+  const hidden = bundle(verifiedThrough('D1')) as DecisionEvidenceBundle &
+    Record<string, unknown>;
+  Object.defineProperty(hidden, 'certification', {
+    value: 'D4',
+    enumerable: false,
+  });
+  assert.throws(() => gradeDecision(hidden), /decision bundle must contain exactly/);
+
+  const symbolClaim = bundle(verifiedThrough('D1')) as DecisionEvidenceBundle &
+    Record<PropertyKey, unknown>;
+  Object.defineProperty(symbolClaim, Symbol('certification'), {
+    value: 'D4',
+    enumerable: false,
+  });
+  assert.throws(() => gradeDecision(symbolClaim), /only string keys/);
+
+  const accessorIdentity = bundle(verifiedThrough('D1'));
+  const digest = accessorIdentity.identity.bundle_sha256;
+  Object.defineProperty(accessorIdentity.identity, 'bundle_sha256', {
+    get: () => digest,
+    enumerable: true,
+  });
+  assert.throws(
+    () => gradeDecision(accessorIdentity),
+    /bundle_sha256 must be an enumerable data property/,
+  );
+
+  const inherited = Object.assign(
+    Object.create({ certification: 'D4' }),
+    bundle(verifiedThrough('D1')),
+  );
+  assert.throws(() => gradeDecision(inherited), /decision bundle must be a plain object/);
+});
+
 test('bundle digest is recomputed from canonical evidence bytes', () => {
   const d1Bundle = bundle(verifiedThrough('D1'));
   const reusedDigest = d1Bundle.identity.bundle_sha256;

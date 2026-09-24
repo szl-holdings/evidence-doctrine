@@ -70,12 +70,21 @@ function validateEvidenceState(requirement: Requirement, state: unknown): Eviden
   return state as EvidenceState;
 }
 
-function assertExactKeys(
-  value: Record<string, unknown>,
+function snapshotClosedRecord(
+  value: object,
   expectedKeys: readonly string[],
   label: string,
-): void {
-  const actualKeys = Object.keys(value).sort();
+): Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError(`${label} must be a plain object`);
+  }
+
+  const ownKeys = Reflect.ownKeys(value);
+  if (ownKeys.some((key) => typeof key !== 'string')) {
+    throw new TypeError(`${label} must contain only string keys`);
+  }
+  const actualKeys = (ownKeys as string[]).sort();
   const expected = [...expectedKeys].sort();
   if (
     actualKeys.length !== expected.length ||
@@ -83,6 +92,16 @@ function assertExactKeys(
   ) {
     throw new TypeError(`${label} must contain exactly: ${expected.join(', ')}`);
   }
+
+  const snapshot: Record<string, unknown> = {};
+  for (const key of expectedKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) {
+      throw new TypeError(`${label}.${key} must be an enumerable data property`);
+    }
+    snapshot[key] = descriptor.value;
+  }
+  return snapshot;
 }
 
 function assertCanonicalSubject(subject: unknown): asserts subject is string {
@@ -154,16 +173,18 @@ function validateBundle(bundle: DecisionEvidenceBundle): DecisionEvidenceBundle 
   if (typeof bundle !== 'object' || bundle === null || Array.isArray(bundle)) {
     throw new TypeError('decision bundle must be an object');
   }
-  const bundleSnapshot = Object.fromEntries(Object.entries(bundle)) as Record<string, unknown>;
-  assertExactKeys(bundleSnapshot, BUNDLE_KEYS, 'decision bundle');
+  const bundleSnapshot = snapshotClosedRecord(bundle, BUNDLE_KEYS, 'decision bundle');
 
   const identity = bundleSnapshot.identity;
   const evidence = bundleSnapshot.evidence;
   if (typeof identity !== 'object' || identity === null || Array.isArray(identity)) {
     throw new TypeError('decision bundle identity must be an object');
   }
-  const identityRecord = Object.fromEntries(Object.entries(identity)) as Record<string, unknown>;
-  assertExactKeys(identityRecord, IDENTITY_KEYS, 'decision bundle identity');
+  const identityRecord = snapshotClosedRecord(
+    identity,
+    IDENTITY_KEYS,
+    'decision bundle identity',
+  );
 
   const subject = identityRecord.subject;
   const bundleSha256 = identityRecord.bundle_sha256;

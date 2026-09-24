@@ -44,13 +44,15 @@ monotonic grading rule. They accept explicit `VERIFIED`, `UNVERIFIED`, and
 Every grading input is a bundle with a non-empty subject, a lowercase sha256
 bundle digest, and a timezone-qualified evaluation timestamp. The outer bundle
 must contain exactly `identity` and `evidence`; `identity` must contain exactly
-`subject`, `bundle_sha256`, and `evaluated_at`. Unknown fields fail closed
-because they are outside the canonical digest and could otherwise carry
-contradictory claims. The grader copies the validated identity into its result
-so a D1-or-higher label cannot become detached from the exact evidence bundle
-that was evaluated. Both references recompute the digest over the canonical
-UTF-8 JSON subject, timestamp, and evidence map; a stale or fabricated digest
-and an impossible calendar timestamp fail closed.
+`subject`, `bundle_sha256`, and `evaluated_at`. These are plain records with
+enumerable string data properties only: extra, symbol-keyed, non-enumerable,
+accessor-backed, or custom-prototype claims fail closed because they are outside
+the canonical digest and could otherwise carry contradictory claims. The grader
+copies the validated identity into its result so a D1-or-higher label cannot
+become detached from the exact evidence bundle that was evaluated. Both
+references recompute the digest over the canonical UTF-8 JSON subject,
+timestamp, and evidence map; a stale or fabricated digest and an impossible
+calendar timestamp fail closed.
 
 ## Lambda case-study boundary
 
