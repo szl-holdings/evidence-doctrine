@@ -54,6 +54,16 @@ references recompute the digest over the canonical UTF-8 JSON subject,
 timestamp, and evidence map; a stale or fabricated digest and an impossible
 calendar timestamp fail closed.
 
+The TypeScript evidence map is also a plain record (an ordinary or null-prototype
+object). Every own key must be a known requirement with an enumerable property
+yielding one of the three state strings. Empty or unknown keys, symbols, hidden
+properties, and custom prototypes are rejected before any evidence getter is
+read. Legitimate own getters are read once per call, preserving the evidence
+snapshot contract; callable or object state values are rejected before
+serialization. Both the digest helper and the grader enforce this boundary;
+the grader hashes and evaluates the same captured primitive states. Valid
+evidence maps retain the same canonical bytes and digests.
+
 ## Lambda case-study boundary
 
 The included guard encodes Lambda uniqueness as **Conjecture 1**: open, gray,
