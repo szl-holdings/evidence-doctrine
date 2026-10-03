@@ -64,7 +64,7 @@ const BOUNDARY_WHITESPACE = new Set([
 function validateEvidenceState(requirement: Requirement, state: unknown): EvidenceState {
   if (!EVIDENCE_STATES.includes(state as EvidenceState)) {
     throw new TypeError(
-      `${requirement} must be VERIFIED, UNVERIFIED, or ABSENT; received ${String(state)}`,
+      `${requirement} must be VERIFIED, UNVERIFIED, or ABSENT; received ${typeof state === 'string' ? state : typeof state}`,
     );
   }
   return state as EvidenceState;
@@ -100,6 +100,41 @@ function snapshotClosedRecord(
       throw new TypeError(`${label}.${key} must be an enumerable data property`);
     }
     snapshot[key] = descriptor.value;
+  }
+  return snapshot;
+}
+
+function snapshotEvidence(value: unknown): DecisionEvidence {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('decision bundle evidence must be an object');
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('decision bundle evidence must be a plain object');
+  }
+
+  const properties: [Requirement, PropertyDescriptor][] = [];
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string') {
+      throw new TypeError('decision bundle evidence must contain only string keys');
+    }
+    if (!REQUIREMENT_NAMES.has(key)) {
+      throw new TypeError(`unknown evidence requirement: ${key}`);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !descriptor.enumerable) {
+      throw new TypeError(`evidence.${key} must be an enumerable own property`);
+    }
+    properties.push([key as Requirement, descriptor]);
+  }
+  // Preserve one read of legitimate getters, after the complete key/descriptor check.
+  // Hashing and grading receive only this captured set of validated primitive states.
+  const snapshot: DecisionEvidence = Object.create(null);
+  for (const [key, descriptor] of properties) {
+    const state = 'value' in descriptor
+      ? descriptor.value
+      : descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined;
+    snapshot[key] = validateEvidenceState(key, state);
   }
   return snapshot;
 }
@@ -158,14 +193,20 @@ export function computeDecisionBundleSha256(
   evidence: DecisionEvidence,
 ): string {
   assertCanonicalSubject(subject);
-  const orderedEvidence = Object.fromEntries(
-    Object.entries(evidence).sort(([left], [right]) => left.localeCompare(right)),
-  );
-  const canonicalBundle = JSON.stringify({
+  if (typeof evaluatedAt !== 'string' || !isStrictTimestamp(evaluatedAt)) {
+    throw new TypeError('identity.evaluated_at must be a timezone-qualified timestamp');
+  }
+  const evidenceSnapshot = snapshotEvidence(evidence);
+  const orderedEvidence: DecisionEvidence = Object.create(null);
+  for (const key of Object.keys(evidenceSnapshot).sort() as Requirement[]) {
+    orderedEvidence[key] = evidenceSnapshot[key];
+  }
+  // Serialize only validated primitive values, without inherited serialization hooks.
+  const canonicalBundle = JSON.stringify(Object.assign(Object.create(null), {
     evaluated_at: evaluatedAt,
     evidence: orderedEvidence,
     subject,
-  });
+  }));
   return createHash('sha256').update(canonicalBundle, 'utf8').digest('hex');
 }
 
@@ -202,16 +243,7 @@ function validateBundle(bundle: DecisionEvidenceBundle): DecisionEvidenceBundle 
     evaluated_at: evaluatedAt,
   };
 
-  if (typeof evidence !== 'object' || evidence === null || Array.isArray(evidence)) {
-    throw new TypeError('decision bundle evidence must be an object');
-  }
-  const evidenceSnapshot = Object.fromEntries(Object.entries(evidence)) as DecisionEvidence;
-  const unknownRequirement = Object.keys(evidenceSnapshot).find(
-    (name) => !REQUIREMENT_NAMES.has(name),
-  );
-  if (unknownRequirement) {
-    throw new TypeError(`unknown evidence requirement: ${unknownRequirement}`);
-  }
+  const evidenceSnapshot = snapshotEvidence(evidence);
   const expectedDigest = computeDecisionBundleSha256(
     identitySnapshot.subject,
     identitySnapshot.evaluated_at,

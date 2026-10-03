@@ -224,6 +224,164 @@ test('grading uses the same evidence snapshot that was hashed', () => {
   assert.equal(policyReads, 1);
 });
 
+function assertRejectedEvidence(evidence: unknown, message: RegExp): void {
+  assert.throws(
+    () => computeDecisionBundleSha256(
+      BUNDLE_IDENTITY.subject, BUNDLE_IDENTITY.evaluated_at, evidence as DecisionEvidence,
+    ),
+    message,
+  );
+  // Do not let the digest helper reject the fixture before the grader is exercised.
+  const supplied = bundle({}, { bundle_sha256: '0'.repeat(64) });
+  supplied.evidence = evidence as DecisionEvidence;
+  assert.throws(() => gradeDecision(supplied), message);
+}
+
+test('empty unknown keys cannot mask other unknown evidence fields', () => {
+  for (const evidence of [
+    { '': 'ABSENT' },
+    { '': 'ABSENT', certification: 'D4' },
+    { certification: 'D4', '': 'ABSENT' },
+    JSON.parse('{"":"ABSENT","toJSON":"VERIFIED"}'),
+  ]) {
+    assertRejectedEvidence(evidence, /unknown evidence requirement/);
+  }
+});
+
+test('callable toJSON cannot substitute empty hashed evidence for a D1 grade', () => {
+  let calls = 0;
+  const evidence = {
+    '': 'ABSENT',
+    ...verifiedThrough('D1'),
+    toJSON() { calls += 1; return {}; },
+  };
+  const supplied = bundle({});
+  supplied.evidence = evidence;
+  assert.throws(() => gradeDecision(supplied), /unknown evidence requirement/);
+  assertRejectedEvidence(evidence, /unknown evidence requirement/);
+  assert.equal(calls, 0);
+});
+
+test('all evidence own keys and descriptors belong to the schema', () => {
+  for (const enumerable of [true, false]) {
+    const symbol = Object.defineProperty({}, Symbol('claim'), { value: 'VERIFIED', enumerable });
+    assertRejectedEvidence(symbol, /only string keys/);
+  }
+  for (const key of ['', 'toJSON', 'certification', '__proto__']) {
+    const hidden = Object.defineProperty({}, key, { value: 'VERIFIED', enumerable: false });
+    assertRejectedEvidence(hidden, /unknown evidence requirement/);
+  }
+  const hiddenState = Object.defineProperty({}, 'inputs_recorded', {
+    value: 'VERIFIED', enumerable: false,
+  });
+  assertRejectedEvidence(hiddenState, /must be an enumerable own property/);
+});
+
+test('the complete evidence schema is checked before any getter is read', () => {
+  let reads = 0;
+  for (const key of ['', 'toJSON', Symbol('claim')]) {
+    const evidence = {
+      get inputs_recorded() { reads += 1; return 'VERIFIED'; },
+      [key]: () => ({}),
+    };
+    assertRejectedEvidence(evidence, /unknown evidence requirement|only string keys/);
+  }
+  const hidden = {
+    get inputs_recorded() { reads += 1; return 'VERIFIED'; },
+  };
+  Object.defineProperty(hidden, 'policy_recorded', { value: 'VERIFIED', enumerable: false });
+  assertRejectedEvidence(hidden, /must be an enumerable own property/);
+  assert.equal(reads, 0);
+});
+
+test('digest helper snapshots legitimate getters once and rejects non-state results', () => {
+  let reads = 0;
+  const evidence: DecisionEvidence = {
+    get inputs_recorded() { reads += 1; return 'VERIFIED' as const; },
+  };
+  const expected = computeDecisionBundleSha256(
+    BUNDLE_IDENTITY.subject, BUNDLE_IDENTITY.evaluated_at, { inputs_recorded: 'VERIFIED' },
+  );
+  assert.equal(computeDecisionBundleSha256(
+    BUNDLE_IDENTITY.subject, BUNDLE_IDENTITY.evaluated_at, evidence,
+  ), expected);
+  assert.equal(reads, 1);
+  let calls = 0;
+  assertRejectedEvidence({
+    get inputs_recorded() { return () => { calls += 1; return 'VERIFIED'; }; },
+  }, /must be VERIFIED, UNVERIFIED, or ABSENT/);
+  assert.equal(calls, 0);
+});
+
+test('getter invocation preserves its receiver and ignores a shadowed call property', () => {
+  let shadowCalls = 0;
+  for (const shadow of [null, () => { shadowCalls += 1; return 'ABSENT'; }]) {
+    const supplied = bundle({ inputs_recorded: 'VERIFIED' });
+    let reads = 0;
+    const getter = function (this: DecisionEvidence) {
+      assert.equal(this, supplied.evidence);
+      reads += 1;
+      return 'VERIFIED';
+    };
+    Object.defineProperty(getter, 'call', { value: shadow });
+    Object.defineProperty(supplied.evidence, 'inputs_recorded', { get: getter, enumerable: true });
+    assert.equal(gradeDecision(supplied).satisfied_requirements[0], 'inputs_recorded');
+    assert.equal(reads, 1);
+    assert.equal(computeDecisionBundleSha256(
+      BUNDLE_IDENTITY.subject, BUNDLE_IDENTITY.evaluated_at, supplied.evidence,
+    ), supplied.identity.bundle_sha256);
+    assert.equal(reads, 2);
+  }
+  assert.equal(shadowCalls, 0);
+});
+
+test('evidence rejects custom prototypes and non-record values', () => {
+  for (const evidence of [null, undefined, [], 'VERIFIED', 1, () => ({})]) {
+    assertRejectedEvidence(evidence, /evidence must be an object/);
+  }
+  for (const evidence of [
+    Object.create({ inputs_recorded: 'VERIFIED' }),
+    Object.assign(Object.create({}), verifiedThrough('D1')),
+    new Date('2026-09-30T00:00:00Z'),
+  ]) {
+    assertRejectedEvidence(evidence, /evidence must be a plain object/);
+  }
+});
+
+test('invalid states cannot run serialization or coercion hooks', () => {
+  let calls = 0;
+  const hook = () => { calls += 1; return 'VERIFIED'; };
+  for (const state of [true, null, undefined, 1, Symbol('VERIFIED'), hook,
+    { toJSON: hook, toString: hook, [Symbol.toPrimitive]: hook }]) {
+    assertRejectedEvidence({ inputs_recorded: state }, /must be VERIFIED, UNVERIFIED, or ABSENT/);
+  }
+  assert.equal(calls, 0);
+});
+
+test('digest helper rejects non-string timestamps without running their hooks', () => {
+  let calls = 0;
+  assert.throws(() => computeDecisionBundleSha256(
+    BUNDLE_IDENTITY.subject,
+    { toJSON() { calls += 1; return BUNDLE_IDENTITY.evaluated_at; } } as never,
+    {},
+  ), /timezone-qualified timestamp/);
+  assert.equal(calls, 0);
+});
+
+test('plain, null-prototype, and frozen evidence preserve canonical hashes and grades', () => {
+  const evidence = verifiedThrough('D1');
+  const canonical = bundle(evidence);
+  const expected = gradeDecision(canonical);
+  const reordered = Object.fromEntries(Object.entries(evidence).reverse());
+  const nullPrototype = Object.assign(Object.create(null), reordered);
+  for (const candidate of [reordered, nullPrototype, Object.freeze({ ...evidence })]) {
+    assert.equal(bundle(candidate).identity.bundle_sha256, canonical.identity.bundle_sha256);
+    assert.deepEqual(gradeDecision(bundle(candidate)), expected);
+  }
+  assert.equal(gradeDecision(bundle({})).achieved_level, 'D0');
+  assert.equal(gradeDecision(bundle({ inputs_recorded: 'ABSENT' })).achieved_level, 'D0');
+});
+
 test('unpaired UTF-16 surrogates are rejected before hashing or grading', () => {
   const invalidSubject = '\ud800';
   assert.throws(
