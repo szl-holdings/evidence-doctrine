@@ -272,7 +272,9 @@ def assert_lambda_case_study(value: Mapping[str, object]) -> dict:
         "display": "GRAY",
         "machine_checked": False,
     }
-    if dict(value) != expected:
+    case_study = dict(value) if isinstance(value, Mapping) else None
+    # Dict equality alone accepts 0/0.0 as False; the schema requires a boolean.
+    if case_study != expected or case_study["machine_checked"] is not False:
         raise ValueError(
             "Lambda uniqueness must remain CONJECTURE_1, OPEN, GRAY, "
             "and not machine-checked"
