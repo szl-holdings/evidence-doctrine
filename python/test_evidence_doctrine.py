@@ -242,6 +242,29 @@ class EvidenceDoctrineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             assert_lambda_case_study(contradictory)
 
+    def test_lambda_guard_requires_literal_false(self):
+        honest = {
+            "claim": "CONJECTURE_1",
+            "state": "OPEN",
+            "display": "GRAY",
+            "machine_checked": False,
+        }
+        for invalid in (0, 0.0, None, "", [], {}):
+            with self.subTest(machine_checked=invalid):
+                with self.assertRaisesRegex(ValueError, "not machine-checked"):
+                    assert_lambda_case_study(dict(honest, machine_checked=invalid))
+        self.assertEqual(assert_lambda_case_study(honest), honest)
+
+    def test_lambda_guard_requires_a_mapping(self):
+        pairs = [
+            ("claim", "CONJECTURE_1"),
+            ("state", "OPEN"),
+            ("display", "GRAY"),
+            ("machine_checked", False),
+        ]
+        with self.assertRaisesRegex(ValueError, "must remain CONJECTURE_1"):
+            assert_lambda_case_study(pairs)
+
     def test_theorem_u_is_conditional(self):
         self.assertEqual(
             evaluate_theorem_u(

@@ -459,6 +459,26 @@ test('Lambda uniqueness stays open, gray, and not machine-checked', () => {
   );
 });
 
+test('Lambda guard rejects false-like values and key/value arrays', () => {
+  const honest = {
+    claim: 'CONJECTURE_1',
+    state: 'OPEN',
+    display: 'GRAY',
+    machine_checked: false,
+  };
+  for (const invalid of [0, null, '', [], {}]) {
+    assert.throws(
+      () => assertLambdaCaseStudy({ ...honest, machine_checked: invalid }),
+      /not machine-checked/,
+    );
+  }
+  assert.throws(
+    () => assertLambdaCaseStudy(Object.entries(honest)),
+    /must remain CONJECTURE_1/,
+  );
+  assert.deepEqual(assertLambdaCaseStudy(honest), honest);
+});
+
 test('Theorem U reports only a conditional result', () => {
   assert.equal(
     evaluateTheoremU({
