@@ -86,3 +86,9 @@ close Conjecture 1.
 
 See [the draft specification](specs/DSLSA-v14.md) and the
 [conservative self-assessment](docs/SZL_SELF_ASSESSMENT.md).
+
+Estate on Hugging Face: models, datasets and Spaces are published under the [SZLHOLDINGS](https://huggingface.co/SZLHOLDINGS) org.
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE).
