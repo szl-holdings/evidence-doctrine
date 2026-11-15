@@ -26,7 +26,7 @@ inside the SZL Holdings platform monorepo so both copies can be compared at an
 exact source commit.
 
 No D-SLSA DOI is currently authorized. The previously proposed concept DOI
-`10.5281/zenodo.19944926` resolves to the Ouroboros Thesis v21 record
+`10.5281/zenodo.24239896` resolves to the Ouroboros Thesis v21 record
 `10.5281/zenodo.20490218`; it is not a D-SLSA deposit and must not be cited as
 one. A future D-SLSA release requires a new Zenodo deposition and a newly minted
 concept DOI.
