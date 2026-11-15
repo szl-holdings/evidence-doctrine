@@ -135,7 +135,7 @@ the corresponding state to `VERIFIED`.
 
 The reference source is public at
 <https://github.com/szl-holdings/evidence-doctrine>. No D-SLSA DOI has been
-minted. The previously proposed concept DOI `10.5281/zenodo.19944926` resolves
+minted. The previously proposed concept DOI `10.5281/zenodo.24239896` resolves
 to the Ouroboros Thesis v21 record `10.5281/zenodo.20490218`, not this
 specification. D-SLSA requires a new Zenodo deposition and concept DOI; the
 unrelated Ouroboros DOI must not be repurposed.
