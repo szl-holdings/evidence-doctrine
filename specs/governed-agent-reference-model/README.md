@@ -17,6 +17,8 @@
 
 *A one-page open model. Give the model away; sell the control plane. Reference implementation: [a11oy](https://github.com/szl-holdings/a11oy) · [puriq-live](https://github.com/szl-holdings/puriq-live).*
 
+*Moved here from szl-holdings/puriq-live#47 (`docs/governed-agent-reference-model.md` at edc32aa5). This copy is the canonical home.*
+
 ## The model
 
 Every governed agent is nine organs. Each organ has a job, a receipt boundary, and a failure mode. The model names the layers so that "which organ is ungoverned in your agent stack?" becomes a question with an answer.
@@ -45,8 +47,8 @@ flowchart LR
 | 5 | **POLICY** (Yuyay) | Deny-by-default gate over every organ transition; versioned, committed rules | guardrails-as-demo | Llama Guard–style filters |
 | 6 | **DECIDE** (Λ-gate) | Aggregate axis scores with axiom self-checks; abstain on insufficiency | Confident decisions with no trace of why | routers, orchestrators |
 | 7 | **VERIFY** | Evidence must already exist before review; REVIEW / ABSTAIN only | Post-hoc vibes | evals platforms (LangSmith, Arize) |
-| 8 | **REMEMBER** (Memory Covenant) | Receipted writes and recalls; review-gated learning | Agents rewriting their own memory silently | **nobody — the frontier** |
-| 9 | **RECEIPT** (Yawar / Khipu) | Seal the run: DSSE-signed, hash-chained, replayable offline | logs that assert but cannot prove | **nobody at runtime** |
+| 8 | **REMEMBER** ([Memory Covenant](https://github.com/szl-holdings/memory-covenant-spec)) | Receipted writes and recalls; review-gated learning | Agents rewriting their own memory silently | — (none identified in our review) |
+| 9 | **RECEIPT** (Yawar / Khipu; [governed-receipt-spec](https://github.com/szl-holdings/governed-receipt-spec)) | Seal the run: DSSE-signed, hash-chained, replayable offline | logs that assert but cannot prove | — (none identified in our review) |
 
 ## Three rules that make it a model
 
@@ -56,13 +58,15 @@ flowchart LR
 
 ## How vendors map in
 
-Cited leaders of a job — SZL takes the job, never the code: vLLM and the inference runtimes serve SENSE/NORMALIZE; Llama Guard–class filters serve POLICY (as advisory, not sovereignty); LangSmith/Arize serve VERIFY (as observation, not proof); Mem0/Zep/Letta serve CONTEXT (as capability, not covenant); Sigstore/DSSE serve RECEIPT (as format, not runtime). **The market has every organ as a product and no product as the organism.** The reference model is the organism diagram; a11oy is the organism.
+Cited leaders of a job — SZL takes the job, never the code: vLLM and the inference runtimes serve SENSE/NORMALIZE; Llama Guard–class filters serve POLICY (as advisory, not sovereignty); LangSmith/Arize serve VERIFY (as observation, not proof); Mem0/Zep/Letta serve CONTEXT (as capability, not covenant); Sigstore/DSSE serve RECEIPT (as format, not runtime). The reference model is the organism diagram; a11oy is SZL's implementation of it.
+
+*The "Who does it today" column is SZL's own mapping of product categories to organs, not a market survey. A dash means no product was identified in our review; it is not a claim that none exists.*
 
 ## Adoption
 
-- **License:** text CC BY 4.0 / code Apache-2.0; conformance checklist in [ORGAN-CHECKLIST.md](ORGAN-CHECKLIST.md), aligned with the Memory Covenant conformance suite.
+- **License:** Apache-2.0 (text and code), per this repository's [LICENSE](../../LICENSE). Conformance checklist in [ORGAN-CHECKLIST.md](ORGAN-CHECKLIST.md), aligned with the [Memory Covenant conformance suite](https://github.com/szl-holdings/memory-covenant-spec/blob/main/conformance/suite.py).
 - **Self-assessment:** map your stack to the nine organs; every organ missing a receipt boundary is your procurement gap.
-- **Certification:** Decision-SLSA v1.4 maturity mapping, attestation grades with expiry (evidence-doctrine) — claim a level only with receipts.
+- **Certification:** [Decision-SLSA v1.4](../DSLSA-v14.md) maturity mapping, attestation grades with expiry ([evidence-doctrine](../../README.md)) — claim a level only with receipts.
 
 ---
 

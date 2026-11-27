@@ -41,9 +41,10 @@ Anything less is capability, not governance. Score honestly: **x/9 organs govern
 
 ## Tie-in
 
-- Organ 8 is the [Memory Covenant](https://github.com/szl-holdings/szl-frontier) (spec v0.4-draft in PR).
+- Organ 8 is the [Memory Covenant](https://github.com/szl-holdings/memory-covenant-spec) (spec v0.4-draft).
 - Organ 9 is [governed-receipt-spec](https://github.com/szl-holdings/governed-receipt-spec) (DSSE envelopes, offline verifier).
-- Certification path: Decision-SLSA v1.4 maturity mapping with expiry — claim a level only with receipts.
+- Certification path: [Decision-SLSA v1.4](../DSLSA-v14.md) maturity mapping with expiry — claim a level only with receipts.
+- License: Apache-2.0, per this repository's [LICENSE](../../LICENSE).
 
 ---
 
